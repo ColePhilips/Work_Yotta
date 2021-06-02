@@ -1,0 +1,49 @@
+
+name: Create Directory
+vars:
+ root_dir: "/home/backups/{{group_names[0]}}"
+ path1:    "{{root_dir}}/{{inventory_hostname}}"
+
+tasks:
+- name: Check if group name directory exists
+  stat:
+     path: "{{root_dir}}"
+  register: stat_result
+
+- name: Create group name directory if it does not exist
+  file:
+      path: "{{root_dir}}"
+      state: directory
+  when: stat_result.stat.exists==False
+
+- name: Check if device directory exists
+  stat:
+     path: "{{path1}}"
+  register: stat_result_2
+
+- name: Create device directory if device directory does not exist
+  file:
+      path: "{{path1}}"
+      state: directory
+  when: stat_result_2.stat.exists==False
+
+- name: Check if backup config exits
+  stat:
+     path: "{{path1}}/{{inventory_hostname}}_{{ansible_date_time.date}}_run_conf.txt"
+  register: conf_result
+
+- name: Create backup config
+  ios_config:
+     backup: yes
+  register: config
+
+- name: Copy config to correct folder
+  copy: 
+     src: "{{config['backup_path']}}"
+     dest: "{{item}}"
+  with_items: "{{path1}}/{{inventory_hostname}}_{{ansible_date_time.date}}_run_conf.txt"
+
+- name: Delete original backup config
+  file:
+    path: "{{config['backup_path']}}"
+    state: absent
